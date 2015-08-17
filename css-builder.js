@@ -49,7 +49,7 @@ module.exports = function bundle(loads, opts) {
     restructuring: cssOptimize,
     shorthandCompacting: cssOptimize,
 
-    target: loader.separateCSS? opts.outFile: '',
+    target: loader.separateCSS ? opts.outFile : '',
     relativeTo: rootURL,
     root: rootURL || '',
     sourceMap: !!opts.sourceMaps,
