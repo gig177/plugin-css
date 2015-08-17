@@ -49,8 +49,9 @@ module.exports = function bundle(loads, opts) {
     restructuring: cssOptimize,
     shorthandCompacting: cssOptimize,
 
-    target: loader.separateCSS ? opts.outFile : rootURL,
+    target: loader.separateCSS? opts.outFile: '',
     relativeTo: rootURL,
+    root: rootURL || '',
     sourceMap: !!opts.sourceMaps,
     sourceMapInlineSources: opts.sourceMapContents
   }).minify(loads.map(function(load) {
