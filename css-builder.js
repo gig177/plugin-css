@@ -28,19 +28,24 @@ function fromFileURL(address) {
   return address;
 }
 
-var cssInject = "(function(c){var d=document,a='appendChild',i='styleSheet',s=d.createElement('style');s.type='text/css';d.getElementsByTagName('head')[0][a](s);s[i]?s[i].cssText=c:s[a](d.createTextNode(c));})";
+var cssInject = "(function(c){if (typeof document == 'undefined') return; var d=document,a='appendChild',i='styleSheet',s=d.createElement('style');s.type='text/css';d.getElementsByTagName('head')[0][a](s);s[i]?s[i].cssText=c:s[a](d.createTextNode(c));})";
 
-module.exports = function bundle(loads, opts) {
+module.exports = function bundle(loads, compileOpts, outputOpts) {
+  // SystemJS Builder 0.14 will write the stubs for use, we detect by the 3 argument over 2 argument bundle call
+  var writeStubs = typeof outputOpts == 'undefined';
+  outputOpts = outputOpts || compileOpts;
 
   var loader = this;
 
-  var stubDefines = loads.map(function(load) {
-    return "System\.register('" + load.name + "', [], false, function() {});";
-  }).join('\n');
+  var stubDefines = writeStubs ? loads.map(function(load) {
+    return (compileOpts.systemGlobal || 'System') + ".register('" + load.name + "', [], false, function() {});";
+  }).join('\n') : [];
 
   var rootURL = loader.rootURL || fromFileURL(loader.baseURL);
 
-  var cssOptimize = opts.minify && opts.cssOptimize !== false;
+  var cssOptimize = outputOpts.minify && outputOpts.cssOptimize !== false;
+  
+  var outFile = loader.separateCSS ? outputOpts.outFile.replace(/\.js$/, '.css') : rootURL;
 
   var cleanCSS = new CleanCSS({
     advanced: cssOptimize,
@@ -49,11 +54,11 @@ module.exports = function bundle(loads, opts) {
     restructuring: cssOptimize,
     shorthandCompacting: cssOptimize,
 
-    target: loader.separateCSS ? opts.outFile : '',
-    relativeTo: rootURL,
+    target: outFile,
     root: rootURL || '',
-    sourceMap: !!opts.sourceMaps,
-    sourceMapInlineSources: opts.sourceMapContents
+    relativeTo: rootURL,
+    sourceMap: !!outputOpts.sourceMaps,
+    sourceMapInlineSources: outputOpts.sourceMapContents
   }).minify(loads.map(function(load) {
     return fromFileURL(load.address) 
   }));
@@ -65,11 +70,9 @@ module.exports = function bundle(loads, opts) {
 
   // write a separate CSS file if necessary
   if (loader.separateCSS) {
-    var outFile = opts.outFile.replace(/\.js$/, '.css');
-
-    if (opts.sourceMaps) {
+    if (outputOpts.sourceMaps) {
       fs.writeFileSync(outFile + '.map', cleanCSS.sourceMap.toString());
-      cssOutput += '/*# sourceMappingURL=' + outFile.split(isWin ? '\\' : '/').pop() + '.map*/';
+      cssOutput += '/*# sourceMappingURL=' + outFile.split(/[\\/]/).pop() + '.map*/';
     }
 
     fs.writeFileSync(outFile, cssOutput);
